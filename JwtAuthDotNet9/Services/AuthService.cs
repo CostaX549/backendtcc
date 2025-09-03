@@ -8,7 +8,7 @@ using JwtAuthDotNet9.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-
+using Microsoft.AspNetCore.Mvc;
 namespace JwtAuthDotNet9.Services
 {
     public class AuthService : IAuthService
@@ -24,9 +24,9 @@ namespace JwtAuthDotNet9.Services
         }
 
       
-        public async Task<User?> RegisterAsync(UserDto request)
+        public async Task<TokenResponseDto?> RegisterAsync([FromForm] UserDto request)
         {
-            if (await context.Users.AnyAsync(u => u.Username == request.Username))
+            if (await context.Users.AnyAsync(u => u.Username == request.Username) || await context.Users.AnyAsync(u => u.Email == request.Email))
             {
                 return null; 
             }
@@ -37,23 +37,53 @@ namespace JwtAuthDotNet9.Services
             var user = new User
             {
                 Username = request.Username,
+                Email = request.Email,
                 Role = roleToAssign
             };
 
          
             var hashedPassword = new PasswordHasher<User>().HashPassword(user, request.Password);
             user.PasswordHash = hashedPassword;
+            if (request.ProfilePicture != null)
+            {
+                var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(request.ProfilePicture.FileName)}";
+                var filePath = Path.Combine(folderPath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await request.ProfilePicture.CopyToAsync(stream);
+                }
+
+                user.ProfilePictureUrl = $"/uploads/{fileName}";
+            }
 
            
             context.Users.Add(user);
             await context.SaveChangesAsync();
-            return user;
+            if (roleToAssign == "Professional")
+            {
+                var psychologist = new PsychologistInformation
+                {
+                    UserId = user.Id,
+                    OfficeName = request.Username, 
+                    ConsultationPrice = request.ConsultationPrice,
+                    PhoneNumber = request.PhoneNumber
+                };
+
+                context.PsychologistInformation.Add(psychologist);
+                await context.SaveChangesAsync();
+            }
+            return await CreateTokenResponse(user); 
         }
 
      
         public async Task<TokenResponseDto?> LoginAsync(UserDto request)
         {
-            var user = await context.Users.SingleOrDefaultAsync(u => u.Username == request.Username);
+            var user = await context.Users.SingleOrDefaultAsync(u => u.Email == request.Email);
             if (user is null)
             {
                 return null; 

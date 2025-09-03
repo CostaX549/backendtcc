@@ -1,26 +1,25 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace JwtAuthDotNet9.Migrations
 {
     /// <inheritdoc />
-    public partial class AddRefreshTokens : Migration
+    public partial class MakeEmailAndPhoneOptional : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "RefreshToken",
+                name: "Email",
                 table: "Users",
                 type: "nvarchar(max)",
                 nullable: true);
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "RefreshTokenExpiryTime",
+            migrationBuilder.AddColumn<string>(
+                name: "PhoneNumber",
                 table: "Users",
-                type: "datetime2",
+                type: "nvarchar(max)",
                 nullable: true);
         }
 
@@ -28,11 +27,11 @@ namespace JwtAuthDotNet9.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "RefreshToken",
+                name: "Email",
                 table: "Users");
 
             migrationBuilder.DropColumn(
-                name: "RefreshTokenExpiryTime",
+                name: "PhoneNumber",
                 table: "Users");
         }
     }
